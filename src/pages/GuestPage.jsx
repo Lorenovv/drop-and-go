@@ -11,7 +11,6 @@ export default function GuestPage() {
   const params = useParams()
   const code = normalizeCode(params.code || '')
 
-  // If code looks invalid, bounce to home
   useEffect(() => {
     if (!isValidCode(code)) {
       navigate('/', { replace: true })
@@ -30,11 +29,13 @@ export default function GuestPage() {
   if (room.status === 'error') {
     return (
       <CenteredCard>
-        <p className="text-lg text-red-300">{t('guest.notFound')}</p>
-        <Link
-          to="/"
-          className="rounded-lg bg-blue-500 hover:bg-blue-400 px-4 py-2 text-sm font-medium text-white transition"
-        >
+        <h2 className="text-2xl font-semibold text-white">
+          {t('guest.notFoundTitle')}
+        </h2>
+        <p className="text-sm text-white/70 leading-relaxed">
+          {t('guest.notFound')}
+        </p>
+        <Link to="/" className="btn-primary mt-2">
           {t('guest.back')}
         </Link>
       </CenteredCard>
@@ -44,11 +45,13 @@ export default function GuestPage() {
   if (room.status === 'closed') {
     return (
       <CenteredCard>
-        <p className="text-lg text-white/80">{t('guest.ended')}</p>
-        <Link
-          to="/host"
-          className="rounded-lg bg-blue-500 hover:bg-blue-400 px-4 py-2 text-sm font-medium text-white transition"
-        >
+        <h2 className="text-2xl font-semibold text-white">
+          {t('guest.endedTitle')}
+        </h2>
+        <p className="text-sm text-white/70 leading-relaxed">
+          {t('guest.ended')}
+        </p>
+        <Link to="/host" className="btn-primary mt-2">
           {t('guest.createOwn')}
         </Link>
       </CenteredCard>
@@ -59,17 +62,17 @@ export default function GuestPage() {
     const reconnecting = room.status === 'reconnecting'
     return (
       <CenteredCard>
-        <Spinner />
-        <p className="text-base text-white/70">
-          {reconnecting
-            ? t('guest.reconnecting')
-            : t('guest.connecting', { code })}
+        <BigSpinner />
+        <h2 className="text-lg font-semibold text-white/90">
+          {reconnecting ? t('guest.reconnecting') : t('guest.connectingTitle')}
+        </h2>
+        <p className="text-sm text-white/60 font-mono tracking-[0.3em]">
+          {code}
         </p>
-        <button
-          type="button"
-          onClick={handleLeave}
-          className="rounded-lg bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-white/80 transition cursor-pointer"
-        >
+        <p className="text-xs text-white/40 max-w-xs">
+          {t('guest.connectingHint')}
+        </p>
+        <button type="button" onClick={handleLeave} className="btn-ghost mt-2">
           {t('guest.leave')}
         </button>
       </CenteredCard>
@@ -77,11 +80,14 @@ export default function GuestPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center px-4 py-6">
-      <div className="w-full max-w-2xl flex flex-col gap-5">
-        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300 flex items-center gap-2">
-          <Dot className="bg-green-400" />
-          <span className="font-mono tracking-widest">{code}</span>
+    <div className="flex flex-1 flex-col items-center px-4 sm:px-6 py-6">
+      <div className="w-full max-w-3xl flex flex-col gap-5">
+        <div className="rounded-2xl glass border-emerald-400/30 px-4 py-2.5 text-sm text-emerald-200 flex items-center gap-2">
+          <Dot className="bg-emerald-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.6)]" />
+          <span className="font-mono tracking-[0.3em]">{code}</span>
+          <span className="text-white/50 ml-auto text-xs">
+            {t('guest.connected')}
+          </span>
         </div>
 
         <Chat
@@ -100,7 +106,7 @@ export default function GuestPage() {
           <button
             type="button"
             onClick={handleLeave}
-            className="rounded-lg bg-red-500/90 hover:bg-red-500 px-4 py-2 text-sm font-medium text-white transition cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium text-white bg-red-500/85 hover:bg-red-500 transition cursor-pointer"
           >
             {t('guest.leave')}
           </button>
@@ -112,19 +118,19 @@ export default function GuestPage() {
 
 function CenteredCard({ children }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-6 flex flex-col items-center gap-4 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md rounded-3xl glass-strong p-7 flex flex-col items-center gap-4 text-center">
         {children}
       </div>
     </div>
   )
 }
 
-function Spinner() {
+function BigSpinner() {
   return (
     <span
       aria-hidden="true"
-      className="inline-block w-6 h-6 rounded-full border-2 border-white/20 border-t-blue-400 animate-spin"
+      className="inline-block w-10 h-10 rounded-full border-2 border-white/15 border-t-blue-400 animate-spin"
     />
   )
 }

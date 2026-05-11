@@ -21,6 +21,11 @@ import {
 const TYPING_DEBOUNCE_MS = 1500
 const GUEST_RECONNECT_DELAY_MS = 1500
 const GUEST_MAX_RECONNECT_ATTEMPTS = 5
+// Initial-connect retries: public 0.peerjs.com is eventually consistent, so a
+// guest that arrives a beat before the host's registration propagates gets a
+// transient `peer-unavailable`. Retry a few times with backoff before giving
+// up and showing the room-not-found error.
+const GUEST_INITIAL_RETRY_DELAYS_MS = [1500, 2500, 4000, 6000]
 
 export function useRoom({ mode, code }) {
   const [status, setStatus] = useState('idle')
@@ -39,6 +44,9 @@ export function useRoom({ mode, code }) {
   const peerTypingTimerRef = useRef(null)
   const reconnectAttemptsRef = useRef(0)
   const closedByUserRef = useRef(false)
+  const hasConnectedRef = useRef(false)
+  const initialRetryIndexRef = useRef(0)
+  const initialRetryTimerRef = useRef(null)
   // Forward ref so `setConnection` can call `tryReconnect` even though it's
   // declared later in the hook body.
   const tryReconnectRef = useRef(() => {})
@@ -54,6 +62,8 @@ export function useRoom({ mode, code }) {
 
       conn.on('open', () => {
         reconnectAttemptsRef.current = 0
+        initialRetryIndexRef.current = 0
+        hasConnectedRef.current = true
         setStatus('connected')
       })
 
@@ -232,10 +242,38 @@ export function useRoom({ mode, code }) {
         setStatus('error')
         return
       }
-      if (
-        (type === 'peer-unavailable' || type === 'invalid-id') &&
-        mode === 'guest'
-      ) {
+      if (type === 'invalid-id' && mode === 'guest') {
+        setError('ROOM_NOT_FOUND')
+        setStatus('error')
+        return
+      }
+      if (type === 'peer-unavailable' && mode === 'guest') {
+        // The public PeerJS signaling server can briefly return
+        // `peer-unavailable` even when the host is up — the registration is
+        // eventually consistent, and mobile clients on a different network
+        // often see this on the first attempt. Retry with backoff before
+        // declaring the room missing.
+        if (hasConnectedRef.current) {
+          tryReconnectRef.current()
+          return
+        }
+        const idx = initialRetryIndexRef.current
+        if (idx < GUEST_INITIAL_RETRY_DELAYS_MS.length) {
+          const delay = GUEST_INITIAL_RETRY_DELAYS_MS[idx]
+          initialRetryIndexRef.current = idx + 1
+          setStatus('connecting')
+          if (initialRetryTimerRef.current) {
+            clearTimeout(initialRetryTimerRef.current)
+          }
+          initialRetryTimerRef.current = setTimeout(() => {
+            if (closedByUserRef.current) return
+            const p = peerRef.current
+            if (!p || p.destroyed) return
+            const conn = p.connect(codeToPeerId(code), { reliable: true })
+            setConnection(conn)
+          }, delay)
+          return
+        }
         setError('ROOM_NOT_FOUND')
         setStatus('error')
         return
@@ -292,6 +330,10 @@ export function useRoom({ mode, code }) {
       connectionRef.current = null
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
       if (peerTypingTimerRef.current) clearTimeout(peerTypingTimerRef.current)
+      if (initialRetryTimerRef.current) {
+        clearTimeout(initialRetryTimerRef.current)
+        initialRetryTimerRef.current = null
+      }
       receiver.abortAll()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

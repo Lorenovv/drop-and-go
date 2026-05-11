@@ -25,7 +25,6 @@ export default function Chat({
   const outgoingList = Object.values(outgoing)
   const incomingList = Object.values(incoming)
 
-  // Auto-scroll to bottom on new message
   useEffect(() => {
     const el = scrollRef.current
     if (el) {
@@ -33,8 +32,6 @@ export default function Chat({
     }
   }, [messages, outgoingList.length, incomingList.length, peerTyping])
 
-  // Play a soft beep on new peer messages when tab is hidden, using
-  // Web Audio API so we don't need to ship an audio file.
   useEffect(() => {
     if (messages.length > prevMessagesLen.current) {
       const last = messages[messages.length - 1]
@@ -93,7 +90,6 @@ export default function Chat({
   const onPickFile = useCallback(
     (e) => {
       handleFiles(e.target.files)
-      // reset so picking same file again triggers change
       e.target.value = ''
     },
     [handleFiles],
@@ -150,7 +146,7 @@ export default function Chat({
   return (
     <section
       className={
-        'relative flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden ' +
+        'relative flex flex-col rounded-3xl glass-strong overflow-hidden min-h-[320px] sm:min-h-[420px] ' +
         (disabled ? 'opacity-60 pointer-events-none select-none' : '')
       }
       onDragOver={onDragOver}
@@ -158,14 +154,14 @@ export default function Chat({
       onDrop={onDrop}
     >
       {dragOver && !disabled && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-blue-500/20 border-2 border-dashed border-blue-400 rounded-2xl text-blue-200 text-lg font-medium pointer-events-none">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-blue-500/15 border-2 border-dashed border-blue-300/70 rounded-3xl text-blue-100 text-lg font-medium pointer-events-none backdrop-blur-md">
           {t('chat.dropHere')}
         </div>
       )}
 
       <div
         ref={scrollRef}
-        className="chat-scroll flex-1 overflow-y-auto px-3 py-3 space-y-2"
+        className="chat-scroll flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-2"
       >
         {messages.length === 0 && (
           <div className="h-full flex items-center justify-center text-white/30 text-sm">
@@ -178,7 +174,7 @@ export default function Chat({
 
         {peerTyping && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-white/10 px-3 py-2 text-sm text-white/70 inline-flex items-center gap-1">
+            <div className="rounded-2xl rounded-bl-md bg-white/10 px-3 py-2 text-sm text-white/70 inline-flex items-center gap-1 backdrop-blur">
               <span>{t('chat.typing')}</span>
               <span className="inline-flex gap-0.5 ml-1">
                 <span className="typing-dot">.</span>
@@ -191,7 +187,7 @@ export default function Chat({
       </div>
 
       {(outgoingList.length > 0 || incomingList.length > 0) && (
-        <div className="px-3 pb-2 space-y-1.5">
+        <div className="px-3 sm:px-4 pb-2 space-y-1.5">
           {outgoingList.map((tx) => (
             <ProgressBar
               key={'out-' + tx.id}
@@ -220,11 +216,11 @@ export default function Chat({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="shrink-0 rounded-lg px-2 py-2 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+          className="shrink-0 rounded-xl px-2.5 py-2 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
           aria-label={t('chat.attach')}
           title={t('chat.attach')}
         >
-          📎
+          <PaperclipIcon />
         </button>
         <input
           ref={fileInputRef}
@@ -243,27 +239,76 @@ export default function Chat({
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder={t('chat.placeholder')}
-          className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-white/30 outline-none focus:border-blue-500 transition"
+          className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-white/30 outline-none focus:border-blue-400 transition"
         />
         <button
           type="submit"
-          className="shrink-0 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-400 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-400 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!text.trim()}
+          aria-label={t('chat.send')}
         >
-          {t('chat.send')}
+          <SendIcon />
+          <span className="hidden sm:inline">{t('chat.send')}</span>
         </button>
         <button
           type="button"
           onClick={() => {
             if (window.confirm(t('chat.clearConfirm'))) onClear()
           }}
-          className="shrink-0 rounded-lg px-2 py-2 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+          className="shrink-0 rounded-xl px-2.5 py-2 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
           aria-label={t('chat.clear')}
           title={t('chat.clear')}
         >
-          🔥
+          <FireIcon />
         </button>
       </form>
     </section>
+  )
+}
+
+function PaperclipIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20.5 12 12 20.5a5 5 0 1 1-7.07-7.07L13 5.36a3.5 3.5 0 0 1 4.95 4.95l-8.06 8.06a2 2 0 0 1-2.83-2.83l7.36-7.36"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function SendIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M21 12 4 4l3 8-3 8 17-8Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M7 12h13" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  )
+}
+
+function FireIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3s4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10.5 7 11 5 12 3Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 16a3 3 0 0 0 6 0"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }

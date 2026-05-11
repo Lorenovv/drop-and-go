@@ -5,15 +5,20 @@
     "footer": "Connection is encrypted. No data is stored on the server."
   },
   "home": {
+    "badge": "P2P · No servers · No signup",
     "createRoom": "Create room",
     "join": "Join",
     "joinPlaceholder": "Enter code, e.g. X4K-9M2",
     "enter": "Enter",
-    "invalidCode": "Invalid code format"
+    "invalidCode": "Invalid code format",
+    "featureFast": "Instant",
+    "featureEncrypted": "E2E encrypted",
+    "featureNoSignup": "No account"
   },
   "host": {
     "yourCode": "Your code",
     "copy": "Copy code",
+    "copyLink": "Copy link",
     "copied": "Copied",
     "shareHint": "Show the QR code or share the code with your friend",
     "waiting": "Waiting for guest...",
@@ -23,12 +28,17 @@
   },
   "guest": {
     "connecting": "Connecting to room {{code}}...",
+    "connectingTitle": "Connecting to room",
+    "connectingHint": "This can take up to 10 seconds on the first attempt.",
     "leave": "Leave room",
     "ended": "Host ended the session. All data has been deleted.",
+    "endedTitle": "Session ended",
     "createOwn": "Create your own room",
-    "notFound": "Room not found or expired",
+    "notFound": "Room not found or expired. Ask the host to generate a new code.",
+    "notFoundTitle": "Room unavailable",
     "back": "Back",
-    "reconnecting": "Connection lost, attempting to reconnect..."
+    "reconnecting": "Connection lost, attempting to reconnect...",
+    "connected": "Online"
   },
   "hostError": {
     "roomBusy": "This code is already in use. Refresh the page to generate a new one.",
