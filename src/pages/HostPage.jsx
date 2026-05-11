@@ -1,14 +1,21 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { QRCodeSVG } from 'qrcode.react'
 import { generateRoomCode } from '../utils/code.js'
 import { useRoom } from '../hooks/useRoom.js'
 import Chat from '../components/Chat.jsx'
 
+// Leaving a session inside the same page load occasionally leaves Trystero
+// relay sockets, RTCPeerConnection resources, and module-level state
+// (notably `selfId`) in a half-torn-down state. The next session is then
+// flaky to peer up. A hard navigation to '/' guarantees the next session
+// starts in a fresh JS context with no leftover signalling state.
+const goHome = () => {
+  window.location.assign('/')
+}
+
 export default function HostPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [code] = useState(() => generateRoomCode())
   const [copied, setCopied] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
@@ -41,8 +48,12 @@ export default function HostPage() {
   }
 
   const handleEnd = () => {
-    room.endSession()
-    navigate('/')
+    try {
+      room.endSession()
+    } catch {
+      // ignore
+    }
+    goHome()
   }
 
   const isConnected = room.status === 'connected'
@@ -90,9 +101,13 @@ export default function HostPage() {
         />
 
         <div className="flex justify-between gap-3">
-          <Link to="/" onClick={() => room.endSession()} className="btn-ghost text-sm py-2">
+          <button
+            type="button"
+            onClick={handleEnd}
+            className="btn-ghost text-sm py-2"
+          >
             {t('host.back')}
-          </Link>
+          </button>
           <button
             type="button"
             onClick={handleEnd}

@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { isValidCode, normalizeCode } from '../utils/code.js'
 
+// Use a hard navigation when entering /host or /guest so that the new
+// session starts in a fresh JS context. Trystero keeps relay sockets and
+// `selfId` at module scope; soft React Router transitions can pick up
+// stale state from a previous session in the same page load and make
+// the new session fail to peer up.
+const hardNavigate = (path) => {
+  window.location.assign(path)
+}
+
 export default function HomePage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [showInput, setShowInput] = useState(false)
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
@@ -18,7 +25,11 @@ export default function HomePage() {
       return
     }
     setError('')
-    navigate('/guest/' + normalized)
+    hardNavigate('/guest/' + normalized)
+  }
+
+  const handleCreate = () => {
+    hardNavigate('/host')
   }
 
   return (
@@ -39,10 +50,14 @@ export default function HomePage() {
         </p>
 
         <div className="w-full flex flex-col sm:flex-row gap-3 mt-2">
-          <Link to="/host" className="btn-primary flex-1 text-base">
+          <button
+            type="button"
+            onClick={handleCreate}
+            className="btn-primary flex-1 text-base"
+          >
             <ArrowRightIcon />
             {t('home.createRoom')}
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => setShowInput((v) => !v)}

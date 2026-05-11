@@ -1,29 +1,44 @@
 import { useEffect } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { isValidCode, normalizeCode } from '../utils/code.js'
 import { useRoom } from '../hooks/useRoom.js'
 import Chat from '../components/Chat.jsx'
 
+// Hard reload on any navigation away from the session. See the equivalent
+// comment in HostPage.jsx — module-level Trystero state and stuck
+// RTCPeerConnections leak across a soft React Router transition and make
+// follow-up sessions flaky to peer up. A real navigation resets it.
+const goHome = () => {
+  window.location.assign('/')
+}
+
+const goHost = () => {
+  window.location.assign('/host')
+}
+
 export default function GuestPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const params = useParams()
   const code = normalizeCode(params.code || '')
 
   useEffect(() => {
     if (!isValidCode(code)) {
-      navigate('/', { replace: true })
+      window.location.replace('/')
     }
-  }, [code, navigate])
+  }, [code])
 
   const room = useRoom({ mode: 'guest', code: isValidCode(code) ? code : null })
 
   if (!isValidCode(code)) return null
 
   const handleLeave = () => {
-    room.endSession()
-    navigate('/')
+    try {
+      room.endSession()
+    } catch {
+      // ignore
+    }
+    goHome()
   }
 
   if (room.status === 'error') {
@@ -36,9 +51,9 @@ export default function GuestPage() {
         <p className="text-sm text-white/70 leading-relaxed">
           {t(isSignaling ? 'guest.signaling' : 'guest.notFound')}
         </p>
-        <Link to="/" className="btn-primary mt-2">
+        <button type="button" onClick={goHome} className="btn-primary mt-2">
           {t('guest.back')}
-        </Link>
+        </button>
       </CenteredCard>
     )
   }
@@ -52,9 +67,9 @@ export default function GuestPage() {
         <p className="text-sm text-white/70 leading-relaxed">
           {t('guest.ended')}
         </p>
-        <Link to="/host" className="btn-primary mt-2">
+        <button type="button" onClick={goHost} className="btn-primary mt-2">
           {t('guest.createOwn')}
-        </Link>
+        </button>
       </CenteredCard>
     )
   }
