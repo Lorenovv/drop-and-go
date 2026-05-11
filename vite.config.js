@@ -1,44 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
+// PWA / service worker is intentionally disabled. This is a real-time P2P
+// app where the host and guest must run the exact same bundle for the
+// signalling protocol to line up — aggressive precaching from
+// vite-plugin-pwa would have stale phone clients trying to talk to a
+// fresh-bundle host (or vice versa) and silently fail. We trade installability
+// for correctness here.
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
-      manifest: {
-        name: 'Drop&Go',
-        short_name: 'Drop&Go',
-        description:
-          'Мгновенный P2P обмен сообщениями и файлами без регистрации.',
-        theme_color: '#0A0A0A',
-        background_color: '#0A0A0A',
-        display: 'standalone',
-        start_url: '/',
-        icons: [
-          {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-        ],
-      },
-    }),
-  ],
+  plugins: [react(), tailwindcss()],
 })

@@ -18,6 +18,25 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     />
     <title>Drop&Go — P2P messenger</title>
+    <script>
+      // One-time cleanup for users who previously installed the PWA service
+      // worker. The SW was caching old bundles and forcing peers onto stale
+      // signalling protocols, breaking new rooms. Strip any leftover SW
+      // registrations and their caches on every load until we're sure the
+      // legacy worker is gone from real-user devices.
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((regs) => regs.forEach((reg) => reg.unregister()))
+          .catch(() => {})
+      }
+      if (typeof caches !== 'undefined' && caches.keys) {
+        caches
+          .keys()
+          .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+          .catch(() => {})
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
