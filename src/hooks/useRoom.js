@@ -29,8 +29,36 @@ const GUEST_INITIAL_TIMEOUT_MS = 18000
 const PEER_RECONNECT_GRACE_MS = 8000
 
 // Unique app identifier so we don't collide with anyone else using Trystero
-// torrent trackers. Tied to the protocol version.
+// nostr relays. Tied to the protocol version.
 const APP_ID = 'drop-and-go-v1'
+
+// Trystero ships with public STUN only. Mobile carriers usually put devices
+// behind symmetric NAT, so STUN alone is not enough — without TURN the ICE
+// negotiation fails silently and the connection just hangs. We hand it the
+// Open Relay Project's free TURN endpoints (the same set the old PeerJS
+// config used) so we have UDP, TLS, and TCP fallbacks for hostile networks.
+const TURN_SERVERS = [
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+]
 
 export function useRoom({ mode, code }) {
   const [status, setStatus] = useState('idle')
@@ -83,7 +111,10 @@ export function useRoom({ mode, code }) {
 
     let room
     try {
-      room = joinRoom({ appId: APP_ID }, codeToRoomId(code))
+      room = joinRoom(
+        { appId: APP_ID, turnConfig: TURN_SERVERS },
+        codeToRoomId(code),
+      )
     } catch (err) {
       console.warn('joinRoom failed:', err)
       setError('SIGNALING_ERROR')
