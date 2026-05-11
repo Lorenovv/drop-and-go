@@ -30,6 +30,11 @@
     "back": "Back",
     "reconnecting": "Connection lost, attempting to reconnect..."
   },
+  "hostError": {
+    "roomBusy": "This code is already in use. Refresh the page to generate a new one.",
+    "signaling": "Couldn't reach the signaling server. Check your internet connection and try again.",
+    "newRoom": "Create a new room"
+  },
   "chat": {
     "placeholder": "Type a message...",
     "send": "Send",
