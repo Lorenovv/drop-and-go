@@ -239,7 +239,10 @@ export default function Chat({
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder={t('chat.placeholder')}
-          className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-white/30 outline-none focus:border-blue-400 transition"
+          // `min-w-0` lets the input shrink below its intrinsic 20-char
+          // width so the row stays inside the chat panel on small phones,
+          // where the buttons + gaps already eat ~150 px of the row.
+          className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-white/30 outline-none focus:border-blue-400 transition"
         />
         <button
           type="submit"

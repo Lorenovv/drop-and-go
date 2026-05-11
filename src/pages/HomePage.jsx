@@ -22,19 +22,19 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-2xl flex flex-col items-center gap-8 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
+      <div className="w-full max-w-2xl flex flex-col items-center gap-6 sm:gap-8 text-center min-w-0">
         <span className="inline-flex items-center gap-2 rounded-full glass px-3 py-1 text-xs text-white/70">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
           <span className="tracking-wide">{t('home.badge')}</span>
         </span>
 
-        <h1 className="text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight leading-[0.95]">
+        <h1 className="text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight leading-[0.95]">
           <span className="text-white">Drop</span>
           <span className="brand-gradient">&amp;Go</span>
         </h1>
 
-        <p className="text-base sm:text-lg text-white/70 leading-relaxed max-w-xl">
+        <p className="text-sm sm:text-lg text-white/70 leading-relaxed max-w-xl">
           {t('app.tagline')}
         </p>
 
@@ -55,8 +55,8 @@ export default function HomePage() {
         </div>
 
         {showInput && (
-          <form onSubmit={handleJoin} className="w-full flex flex-col gap-2">
-            <div className="flex gap-2 w-full min-w-0">
+          <form onSubmit={handleJoin} className="w-full flex flex-col gap-2 min-w-0">
+            <div className="flex flex-col sm:flex-row gap-2 w-full min-w-0">
               <input
                 type="text"
                 inputMode="text"
@@ -72,16 +72,15 @@ export default function HomePage() {
                 maxLength={7}
                 // Constrain the input's intrinsic width to the actual code
                 // length so flex shrinking can keep the row inside the
-                // viewport on narrow phones (default <input> size is 20
-                // chars, which with the wide `tracking-[0.4em]` font would
-                // otherwise push the submit button off-screen).
+                // viewport on small viewports (default `size=20` plus wide
+                // letter-spacing is otherwise pushed beyond the container).
                 size={7}
                 autoFocus
-                className="flex-1 min-w-0 rounded-2xl glass px-4 py-3 text-center font-mono uppercase tracking-[0.4em] text-lg placeholder:text-white/30 placeholder:font-sans placeholder:tracking-normal placeholder:normal-case outline-none focus:border-blue-400 transition"
+                className="flex-1 w-full min-w-0 rounded-2xl glass px-4 py-3 text-center font-mono uppercase tracking-[0.4em] text-lg placeholder:text-white/30 placeholder:font-sans placeholder:tracking-normal placeholder:normal-case outline-none focus:border-blue-400 transition"
               />
               <button
                 type="submit"
-                className="btn-primary shrink-0 px-5"
+                className="btn-primary w-full sm:w-auto shrink-0 px-5"
                 disabled={!code}
               >
                 {t('home.enter')}
