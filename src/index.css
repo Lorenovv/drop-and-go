@@ -27,6 +27,10 @@ body,
 html {
   /* Slightly larger touch targets and crisper hinting on iOS Safari */
   -webkit-text-size-adjust: 100%;
+  /* Belt-and-braces against horizontal scroll on mobile: setting it only on
+     `body` is silently ignored by some iOS Safari versions when an inner
+     element overflows the viewport. */
+  overflow-x: hidden;
 }
 
 body {

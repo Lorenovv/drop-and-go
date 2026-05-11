@@ -24,18 +24,68 @@
       // signalling protocols, breaking new rooms. Strip any leftover SW
       // registrations and their caches on every load until we're sure the
       // legacy worker is gone from real-user devices.
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker
-          .getRegistrations()
-          .then((regs) => regs.forEach((reg) => reg.unregister()))
-          .catch(() => {})
-      }
-      if (typeof caches !== 'undefined' && caches.keys) {
-        caches
-          .keys()
-          .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-          .catch(() => {})
-      }
+      //
+      // IMPORTANT: just unregistering the SW and clearing caches is not
+      // enough on the *current* page load — by the time the SW is gone, the
+      // browser has already served the stale `index.html` (and its imported
+      // JS bundles) from the SW cache. The user is now running pre-Trystero
+      // code that will never see a peer using the new signalling, and after
+      // 18s they get "Комната недоступна". To recover on the same visit we
+      // force one reload after cleanup so the next request bypasses the
+      // dying SW and fetches a fresh bundle from the network. A
+      // `sessionStorage` flag prevents an infinite reload loop on browsers
+      // with no SW to clean up.
+      (function () {
+        try {
+          if (sessionStorage.getItem('dg-sw-killswitch') === '1') return
+        } catch (_) {
+          return
+        }
+        var needsReload = false
+        var pending = []
+        if ('serviceWorker' in navigator) {
+          pending.push(
+            navigator.serviceWorker
+              .getRegistrations()
+              .then(function (regs) {
+                if (regs && regs.length) needsReload = true
+                return Promise.all(
+                  (regs || []).map(function (reg) {
+                    return reg.unregister()
+                  }),
+                )
+              })
+              .catch(function () {}),
+          )
+        }
+        if (typeof caches !== 'undefined' && caches.keys) {
+          pending.push(
+            caches
+              .keys()
+              .then(function (keys) {
+                if (keys && keys.length) needsReload = true
+                return Promise.all(
+                  (keys || []).map(function (k) {
+                    return caches.delete(k)
+                  }),
+                )
+              })
+              .catch(function () {}),
+          )
+        }
+        if (!pending.length) return
+        Promise.all(pending).then(function () {
+          if (!needsReload) return
+          try {
+            sessionStorage.setItem('dg-sw-killswitch', '1')
+          } catch (_) {
+            // If sessionStorage is unavailable we can't guard against a
+            // loop, so don't reload.
+            return
+          }
+          location.reload()
+        })
+      })()
     </script>
   </head>
   <body>
