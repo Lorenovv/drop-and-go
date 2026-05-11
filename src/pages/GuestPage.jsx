@@ -27,13 +27,14 @@ export default function GuestPage() {
   }
 
   if (room.status === 'error') {
+    const isSignaling = room.error === 'SIGNALING_ERROR'
     return (
       <CenteredCard>
         <h2 className="text-2xl font-semibold text-white">
-          {t('guest.notFoundTitle')}
+          {t(isSignaling ? 'guest.signalingTitle' : 'guest.notFoundTitle')}
         </h2>
         <p className="text-sm text-white/70 leading-relaxed">
-          {t('guest.notFound')}
+          {t(isSignaling ? 'guest.signaling' : 'guest.notFound')}
         </p>
         <Link to="/" className="btn-primary mt-2">
           {t('guest.back')}

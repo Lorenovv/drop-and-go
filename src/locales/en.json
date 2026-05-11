@@ -36,6 +36,8 @@
     "createOwn": "Create your own room",
     "notFound": "Room not found or expired. Ask the host to generate a new code.",
     "notFoundTitle": "Room unavailable",
+    "signalingTitle": "Can't reach the signaling network",
+    "signaling": "Couldn't connect to any signaling relay. Check your internet — on cellular networks try a VPN or Wi-Fi.",
     "back": "Back",
     "reconnecting": "Connection lost, attempting to reconnect...",
     "connected": "Online"

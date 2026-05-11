@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { joinRoom, selfId } from '@trystero-p2p/nostr'
+import { getRelaySockets, joinRoom, selfId } from '@trystero-p2p/nostr'
 import { codeToRoomId } from '../utils/code.js'
 import { MAX_FILE_BYTES } from '../utils/fileTransfer.js'
 
@@ -130,12 +130,31 @@ export function useRoom({ mode, code }) {
 
     if (mode === 'guest') {
       initialTimerRef.current = setTimeout(() => {
-        // No host has shown up. Either the code is wrong or the host left
-        // before we joined.
-        if (!peerIdRef.current) {
-          setError('ROOM_NOT_FOUND')
-          setStatus('error')
-        }
+        if (peerIdRef.current) return
+        // No host has shown up before the timeout. Snapshot the relay state
+        // so we can distinguish "signalling is dead on this network" (no
+        // relays open) from "signalling is fine but no host in this room"
+        // (some relays open, but nobody's listening on the room id).
+        const sockets = (() => {
+          try {
+            return getRelaySockets() || {}
+          } catch {
+            return {}
+          }
+        })()
+        const openCount = Object.values(sockets).filter(
+          (ws) => ws && ws.readyState === 1,
+        ).length
+        const totalCount = Object.keys(sockets).length
+        console.warn(
+          '[useRoom] guest timeout — relays:',
+          openCount,
+          '/',
+          totalCount,
+          'open',
+        )
+        setError(openCount === 0 ? 'SIGNALING_ERROR' : 'ROOM_NOT_FOUND')
+        setStatus('error')
       }, GUEST_INITIAL_TIMEOUT_MS)
     }
 
