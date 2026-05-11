@@ -1,0 +1,53 @@
+{
+  "app": {
+    "title": "Drop&Go",
+    "tagline": "Instant messaging and file sharing without signing in. Create a room — share the code with a friend.",
+    "footer": "Connection is encrypted. No data is stored on the server."
+  },
+  "home": {
+    "createRoom": "Create room",
+    "join": "Join",
+    "joinPlaceholder": "Enter code, e.g. X4K-9M2",
+    "enter": "Enter",
+    "invalidCode": "Invalid code format"
+  },
+  "host": {
+    "yourCode": "Your code",
+    "copy": "Copy code",
+    "copied": "Copied",
+    "shareHint": "Show the QR code or share the code with your friend",
+    "waiting": "Waiting for guest...",
+    "guestJoined": "Guest connected",
+    "end": "End session",
+    "back": "Back to home"
+  },
+  "guest": {
+    "connecting": "Connecting to room {{code}}...",
+    "leave": "Leave room",
+    "ended": "Host ended the session. All data has been deleted.",
+    "createOwn": "Create your own room",
+    "notFound": "Room not found or expired",
+    "back": "Back",
+    "reconnecting": "Connection lost, attempting to reconnect..."
+  },
+  "chat": {
+    "placeholder": "Type a message...",
+    "send": "Send",
+    "attach": "Attach file",
+    "clear": "Clear chat",
+    "clearConfirm": "Clear the entire chat?",
+    "typing": "Typing...",
+    "you": "You",
+    "peer": "Peer",
+    "download": "Download",
+    "fileTooLarge": "File exceeds 500 MB — not sent",
+    "sending": "Sending",
+    "receiving": "Receiving",
+    "cleared": "Peer cleared the chat",
+    "dropHere": "Drop file here"
+  },
+  "lang": {
+    "ru": "RU",
+    "en": "EN"
+  }
+}
