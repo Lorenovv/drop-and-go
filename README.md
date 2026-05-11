@@ -1,12 +1,20 @@
 # Drop&Go
 
+> **Status: Production ready · Готов к использованию**
+> Live: **https://drop-and-go.vercel.app/**
+
 > Мгновенный P2P-обмен сообщениями и файлами без регистрации.
 > Instant peer-to-peer messaging and file sharing — no signup, no backend.
 
-Drop&Go is a static React app that uses WebRTC (via [PeerJS](https://peerjs.com))
-to establish a direct, encrypted connection between two browsers. There is no
-backend storing messages or files: everything is exchanged peer-to-peer and
-disappears the moment the host closes the tab.
+Drop&Go is a static React app that uses WebRTC (via [Trystero](https://github.com/dmotz/trystero)
+over the public Nostr relay network) to establish a direct, encrypted
+connection between two browsers. There is no backend storing messages or
+files: everything is exchanged peer-to-peer and disappears the moment the
+host closes the tab.
+
+The app is deployed and ready to use at https://drop-and-go.vercel.app/ —
+open the link on any modern browser (desktop or mobile), create a room,
+and share the 6-character code, link, or QR with the other side.
 
 ## Features
 
