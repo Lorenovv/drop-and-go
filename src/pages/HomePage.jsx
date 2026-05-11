@@ -56,7 +56,7 @@ export default function HomePage() {
 
         {showInput && (
           <form onSubmit={handleJoin} className="w-full flex flex-col gap-2">
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full min-w-0">
               <input
                 type="text"
                 inputMode="text"
@@ -70,12 +70,18 @@ export default function HomePage() {
                 }}
                 placeholder={t('home.joinPlaceholder')}
                 maxLength={7}
+                // Constrain the input's intrinsic width to the actual code
+                // length so flex shrinking can keep the row inside the
+                // viewport on narrow phones (default <input> size is 20
+                // chars, which with the wide `tracking-[0.4em]` font would
+                // otherwise push the submit button off-screen).
+                size={7}
                 autoFocus
-                className="flex-1 rounded-2xl glass px-4 py-3 text-center font-mono uppercase tracking-[0.4em] text-lg placeholder:text-white/30 placeholder:font-sans placeholder:tracking-normal placeholder:normal-case outline-none focus:border-blue-400 transition"
+                className="flex-1 min-w-0 rounded-2xl glass px-4 py-3 text-center font-mono uppercase tracking-[0.4em] text-lg placeholder:text-white/30 placeholder:font-sans placeholder:tracking-normal placeholder:normal-case outline-none focus:border-blue-400 transition"
               />
               <button
                 type="submit"
-                className="btn-primary px-5"
+                className="btn-primary shrink-0 px-5"
                 disabled={!code}
               >
                 {t('home.enter')}
