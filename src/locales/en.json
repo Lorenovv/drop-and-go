@@ -19,10 +19,13 @@
     "waiting": "Waiting for guest...",
     "guestJoined": "Guest connected",
     "end": "End session",
-    "back": "Back to home"
+    "back": "Back to home",
+    "errorBusy": "This code is already in use. Create a new room.",
+    "errorSignaling": "Could not reach the signaling server. Check your connection and try again."
   },
   "guest": {
     "connecting": "Connecting to room {{code}}...",
+    "connected": "Connected to host",
     "leave": "Leave room",
     "ended": "Host ended the session. All data has been deleted.",
     "createOwn": "Create your own room",
@@ -32,6 +35,8 @@
   },
   "chat": {
     "placeholder": "Type a message...",
+    "emptyTitle": "All clear.",
+    "emptySub": "Messages and files show up here and vanish with the tab.",
     "send": "Send",
     "attach": "Attach file",
     "clear": "Clear chat",

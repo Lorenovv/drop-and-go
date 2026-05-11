@@ -16,8 +16,8 @@ export default defineConfig({
         short_name: 'Drop&Go',
         description:
           'Мгновенный P2P обмен сообщениями и файлами без регистрации.',
-        theme_color: '#0A0A0A',
-        background_color: '#0A0A0A',
+        theme_color: '#0E0E10',
+        background_color: '#0E0E10',
         display: 'standalone',
         start_url: '/',
         icons: [

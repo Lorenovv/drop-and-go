@@ -30,10 +30,12 @@ export default function GuestPage() {
   if (room.status === 'error') {
     return (
       <CenteredCard>
-        <p className="text-lg text-red-300">{t('guest.notFound')}</p>
+        <h2 className="display text-3xl text-[color:var(--color-fg)]">
+          {t('guest.notFound')}
+        </h2>
         <Link
           to="/"
-          className="rounded-lg bg-blue-500 hover:bg-blue-400 px-4 py-2 text-sm font-medium text-white transition"
+          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:brightness-110 transition"
         >
           {t('guest.back')}
         </Link>
@@ -44,10 +46,12 @@ export default function GuestPage() {
   if (room.status === 'closed') {
     return (
       <CenteredCard>
-        <p className="text-lg text-white/80">{t('guest.ended')}</p>
+        <h2 className="display text-3xl sm:text-4xl text-[color:var(--color-fg)] max-w-md">
+          {t('guest.ended')}
+        </h2>
         <Link
           to="/host"
-          className="rounded-lg bg-blue-500 hover:bg-blue-400 px-4 py-2 text-sm font-medium text-white transition"
+          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:brightness-110 transition"
         >
           {t('guest.createOwn')}
         </Link>
@@ -59,8 +63,8 @@ export default function GuestPage() {
     const reconnecting = room.status === 'reconnecting'
     return (
       <CenteredCard>
-        <Spinner />
-        <p className="text-base text-white/70">
+        <span className="spinner" />
+        <p className="text-base text-[color:var(--color-fg-soft)] max-w-sm">
           {reconnecting
             ? t('guest.reconnecting')
             : t('guest.connecting', { code })}
@@ -68,7 +72,7 @@ export default function GuestPage() {
         <button
           type="button"
           onClick={handleLeave}
-          className="rounded-lg bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-white/80 transition cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full glass px-5 py-2.5 text-sm text-[color:var(--color-fg-soft)] hover:text-[color:var(--color-fg)] transition cursor-pointer"
         >
           {t('guest.leave')}
         </button>
@@ -77,11 +81,17 @@ export default function GuestPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center px-4 py-6">
-      <div className="w-full max-w-2xl flex flex-col gap-5">
-        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300 flex items-center gap-2">
-          <Dot className="bg-green-400" />
-          <span className="font-mono tracking-widest">{code}</span>
+    <div className="flex flex-1 flex-col items-center px-4 sm:px-6 py-6 sm:py-10">
+      <div className="w-full max-w-3xl flex flex-col gap-5 fade-up">
+        <div className="glass rounded-full px-4 py-2.5 flex items-center gap-3 text-sm">
+          <span className="inline-block w-2 h-2 rounded-full bg-[color:var(--color-ok)] pulse-dot" />
+          <span className="text-[color:var(--color-fg)] font-medium">
+            {t('guest.connected')}
+          </span>
+          <span className="text-[color:var(--color-fg-faint)]">·</span>
+          <span className="mono text-[color:var(--color-fg-muted)] tracking-[0.2em]">
+            {code}
+          </span>
         </div>
 
         <Chat
@@ -100,7 +110,7 @@ export default function GuestPage() {
           <button
             type="button"
             onClick={handleLeave}
-            className="rounded-lg bg-red-500/90 hover:bg-red-500 px-4 py-2 text-sm font-medium text-white transition cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-err-soft)] text-[color:var(--color-err)] hover:bg-[color:var(--color-err)] hover:text-white px-4 py-2 text-sm font-medium transition cursor-pointer border border-[color:var(--color-err)]/30"
           >
             {t('guest.leave')}
           </button>
@@ -112,28 +122,10 @@ export default function GuestPage() {
 
 function CenteredCard({ children }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-6 flex flex-col items-center gap-4 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 fade-up">
+      <div className="glass rounded-3xl p-8 sm:p-10 flex flex-col items-center gap-5 text-center max-w-md w-full">
         {children}
       </div>
     </div>
-  )
-}
-
-function Spinner() {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-block w-6 h-6 rounded-full border-2 border-white/20 border-t-blue-400 animate-spin"
-    />
-  )
-}
-
-function Dot({ className = '' }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={'inline-block w-2 h-2 rounded-full ' + className}
-    />
   )
 }
