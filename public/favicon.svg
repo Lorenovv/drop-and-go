@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#0A0A0A"/>
-  <path d="M32 12 C 22 24, 18 32, 18 40 a 14 14 0 0 0 28 0 c 0 -8 -4 -16 -14 -28 z" fill="#3B82F6"/>
-  <path d="M40 38 L46 44 L40 50" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <path d="M22 44 L42 44" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <rect width="64" height="64" rx="14" fill="#0E0E10"/>
+  <!-- Soft warm glow -->
+  <circle cx="22" cy="22" r="22" fill="#FF7A52" opacity="0.22"/>
+  <!-- Stylised drop shape, off-centre for a more organic feel -->
+  <path d="M30 12 C 21 24, 17 32, 17 40 a 14 14 0 0 0 28 0 c 0 -8 -4 -16 -15 -28 z"
+        fill="#FF7A52"/>
+  <!-- Italic serif ampersand-ish accent inside the drop, evoking 'Drop&Go' -->
+  <path d="M27 36 C 27 30, 31 28, 33 30 C 35 32, 35 35, 32 38 L 27 44 L 36 44"
+        fill="none" stroke="#FFF7F2" stroke-width="2.4"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

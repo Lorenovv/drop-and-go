@@ -150,26 +150,30 @@ export default function Chat({
   return (
     <section
       className={
-        'relative flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden ' +
-        (disabled ? 'opacity-60 pointer-events-none select-none' : '')
+        'relative flex flex-col rounded-[1.75rem] glass overflow-hidden min-h-[26rem] ' +
+        (disabled ? 'opacity-50 pointer-events-none select-none' : '')
       }
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
       {dragOver && !disabled && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-blue-500/20 border-2 border-dashed border-blue-400 rounded-2xl text-blue-200 text-lg font-medium pointer-events-none">
-          {t('chat.dropHere')}
+        <div className="absolute inset-2 z-10 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[color:var(--color-accent)] bg-[color:var(--color-accent-dim)] text-[color:var(--color-fg)] text-base font-medium pointer-events-none backdrop-blur">
+          <DropIcon />
+          <span className="mt-2">{t('chat.dropHere')}</span>
         </div>
       )}
 
       <div
         ref={scrollRef}
-        className="chat-scroll flex-1 overflow-y-auto px-3 py-3 space-y-2"
+        className="chat-scroll flex-1 overflow-y-auto px-4 sm:px-5 py-5 space-y-2.5"
       >
         {messages.length === 0 && (
-          <div className="h-full flex items-center justify-center text-white/30 text-sm">
-            {t('chat.placeholder')}
+          <div className="h-full min-h-[16rem] flex flex-col items-center justify-center text-center gap-2 text-[color:var(--color-fg-faint)]">
+            <span className="display text-3xl text-[color:var(--color-fg-soft)]">
+              {t('chat.emptyTitle')}
+            </span>
+            <span className="text-sm">{t('chat.emptySub')}</span>
           </div>
         )}
         {messages.map((m) => (
@@ -178,7 +182,7 @@ export default function Chat({
 
         {peerTyping && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-white/10 px-3 py-2 text-sm text-white/70 inline-flex items-center gap-1">
+            <div className="glass rounded-2xl rounded-bl-md px-3 py-2 text-sm text-[color:var(--color-fg-muted)] inline-flex items-center gap-1">
               <span>{t('chat.typing')}</span>
               <span className="inline-flex gap-0.5 ml-1">
                 <span className="typing-dot">.</span>
@@ -191,7 +195,7 @@ export default function Chat({
       </div>
 
       {(outgoingList.length > 0 || incomingList.length > 0) && (
-        <div className="px-3 pb-2 space-y-1.5">
+        <div className="px-4 sm:px-5 pb-3 space-y-2">
           {outgoingList.map((tx) => (
             <ProgressBar
               key={'out-' + tx.id}
@@ -215,16 +219,16 @@ export default function Chat({
 
       <form
         onSubmit={submit}
-        className="flex items-center gap-2 border-t border-white/10 bg-black/30 px-2 py-2"
+        className="flex items-center gap-2 border-t border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]/60 px-3 py-3"
       >
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="shrink-0 rounded-lg px-2 py-2 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+          className="shrink-0 grid place-items-center w-10 h-10 rounded-full text-[color:var(--color-fg-muted)] hover:bg-white/5 hover:text-[color:var(--color-fg)] transition cursor-pointer"
           aria-label={t('chat.attach')}
           title={t('chat.attach')}
         >
-          📎
+          <PaperclipIcon />
         </button>
         <input
           ref={fileInputRef}
@@ -243,27 +247,105 @@ export default function Chat({
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder={t('chat.placeholder')}
-          className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-white/30 outline-none focus:border-blue-500 transition"
+          className="flex-1 rounded-full bg-transparent px-4 py-2.5 text-[15px] placeholder:text-[color:var(--color-fg-faint)] outline-none"
         />
-        <button
-          type="submit"
-          className="shrink-0 rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-400 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!text.trim()}
-        >
-          {t('chat.send')}
-        </button>
         <button
           type="button"
           onClick={() => {
             if (window.confirm(t('chat.clearConfirm'))) onClear()
           }}
-          className="shrink-0 rounded-lg px-2 py-2 text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+          className="shrink-0 grid place-items-center w-10 h-10 rounded-full text-[color:var(--color-fg-muted)] hover:bg-white/5 hover:text-[color:var(--color-fg)] transition cursor-pointer"
           aria-label={t('chat.clear')}
           title={t('chat.clear')}
         >
-          🔥
+          <TrashIcon />
+        </button>
+        <button
+          type="submit"
+          className="shrink-0 grid place-items-center w-10 h-10 rounded-full bg-[color:var(--color-accent)] text-[color:var(--color-accent-fg)] hover:brightness-110 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 shadow-[0_10px_24px_-12px_rgba(255,122,82,0.6)]"
+          disabled={!text.trim()}
+          aria-label={t('chat.send')}
+          title={t('chat.send')}
+        >
+          <SendIcon />
         </button>
       </form>
     </section>
+  )
+}
+
+function DropIcon() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3v14" />
+      <path d="m6 11 6 6 6-6" />
+      <path d="M4 21h16" />
+    </svg>
+  )
+}
+
+function PaperclipIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 1 1-2.83-2.83l8.49-8.49" />
+    </svg>
+  )
+}
+
+function SendIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m3 11 18-8-8 18-2-8z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    </svg>
   )
 }

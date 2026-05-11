@@ -3,11 +3,13 @@ import HomePage from './pages/HomePage.jsx'
 import HostPage from './pages/HostPage.jsx'
 import GuestPage from './pages/GuestPage.jsx'
 import LanguageToggle from './components/LanguageToggle.jsx'
+import Brand from './components/Brand.jsx'
 
 export default function App() {
   return (
     <div className="min-h-full flex flex-col">
-      <header className="flex items-center justify-end px-4 py-3">
+      <header className="px-5 sm:px-8 py-5 flex items-center justify-between gap-4">
+        <Brand size="sm" />
         <LanguageToggle />
       </header>
       <main className="flex-1 flex flex-col">

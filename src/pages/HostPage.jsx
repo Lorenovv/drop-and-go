@@ -34,33 +34,43 @@ export default function HostPage() {
     navigate('/')
   }
 
-  // Status helpers for header strip
   const isConnected = room.status === 'connected'
 
   return (
-    <div className="flex flex-1 flex-col items-center px-4 py-6">
-      <div className="w-full max-w-2xl flex flex-col gap-5">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 flex flex-col sm:flex-row gap-5 items-center">
-          <div className="flex-1 flex flex-col items-center sm:items-start gap-3 order-2 sm:order-1 w-full">
-            <span className="text-xs uppercase tracking-widest text-white/40">
+    <div className="flex flex-1 flex-col items-center px-4 sm:px-6 py-6 sm:py-10">
+      <div className="w-full max-w-3xl flex flex-col gap-6 fade-up">
+        {/* Bento card: code + QR + share */}
+        <section className="glass rounded-[2rem] p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-6 sm:gap-10 items-center">
+          <div className="flex flex-col items-center sm:items-start gap-4 text-center sm:text-left">
+            <span className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--color-fg-faint)]">
               {t('host.yourCode')}
             </span>
-            <div className="font-mono text-4xl sm:text-5xl font-bold tracking-widest text-blue-400 select-all">
+            <div className="mono text-[clamp(2.5rem,8vw,4.5rem)] font-semibold tracking-[0.18em] text-[color:var(--color-fg)] leading-none select-all">
               {code}
             </div>
             <button
               type="button"
               onClick={copy}
-              className="rounded-lg bg-blue-500/90 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-400 transition cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:brightness-110 transition cursor-pointer shadow-[0_12px_30px_-12px_rgba(255,122,82,0.6)]"
             >
-              {copied ? t('host.copied') : t('host.copy')}
+              {copied ? <Check /> : <Copy />}
+              <span>{copied ? t('host.copied') : t('host.copy')}</span>
             </button>
-            <p className="text-xs text-white/50">{t('host.shareHint')}</p>
+            <p className="text-xs text-[color:var(--color-fg-muted)] max-w-xs">
+              {t('host.shareHint')}
+            </p>
           </div>
-          <div className="order-1 sm:order-2 shrink-0 rounded-lg bg-white p-2">
-            <QRCodeSVG value={guestUrl} size={128} level="M" />
+
+          <div className="self-center rounded-2xl bg-[color:var(--color-fg)] p-3 sm:p-4">
+            <QRCodeSVG
+              value={guestUrl}
+              size={128}
+              level="M"
+              bgColor="transparent"
+              fgColor="#0E0E10"
+            />
           </div>
-        </div>
+        </section>
 
         <StatusBanner status={room.status} error={room.error} />
 
@@ -80,14 +90,15 @@ export default function HostPage() {
           <Link
             to="/"
             onClick={() => room.endSession()}
-            className="rounded-lg bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-white/80 transition"
+            className="inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-sm text-[color:var(--color-fg-soft)] hover:text-[color:var(--color-fg)] transition"
           >
-            {t('host.back')}
+            <ArrowLeft />
+            <span>{t('host.back')}</span>
           </Link>
           <button
             type="button"
             onClick={handleEnd}
-            className="rounded-lg bg-red-500/90 hover:bg-red-500 px-4 py-2 text-sm font-medium text-white transition cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full bg-[color:var(--color-err-soft)] text-[color:var(--color-err)] hover:bg-[color:var(--color-err)] hover:text-white px-4 py-2 text-sm font-medium transition cursor-pointer border border-[color:var(--color-err)]/30"
           >
             {t('host.end')}
           </button>
@@ -101,43 +112,83 @@ function StatusBanner({ status, error }) {
   const { t } = useTranslation()
   if (status === 'connected') {
     return (
-      <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300 flex items-center gap-2">
-        <Dot className="bg-green-400" />
-        <span>{t('host.guestJoined')}</span>
+      <div className="glass rounded-full px-4 py-2.5 flex items-center gap-2.5 text-sm">
+        <span className="inline-block w-2 h-2 rounded-full bg-[color:var(--color-ok)] pulse-dot" />
+        <span className="text-[color:var(--color-fg)] font-medium">
+          {t('host.guestJoined')}
+        </span>
       </div>
     )
   }
   if (status === 'error') {
-    const key = error === 'ROOM_BUSY' ? 'guest.notFound' : 'guest.notFound'
+    const key =
+      error === 'ROOM_BUSY' ? 'host.errorBusy' : 'host.errorSignaling'
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+      <div className="rounded-2xl border border-[color:var(--color-err)]/30 bg-[color:var(--color-err-soft)] px-4 py-3 text-sm text-[color:var(--color-err)]">
         {t(key)}
       </div>
     )
   }
-  // initializing / waiting / reconnecting / closed
   return (
-    <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 flex items-center gap-2">
-      <Spinner />
+    <div className="glass rounded-full px-4 py-2.5 flex items-center gap-3 text-sm text-[color:var(--color-fg-muted)]">
+      <span className="spinner shrink-0" />
       <span>{t('host.waiting')}</span>
     </div>
   )
 }
 
-function Spinner() {
+function Copy() {
   return (
-    <span
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
-      className="inline-block w-3 h-3 rounded-full border-2 border-white/30 border-t-white/80 animate-spin"
-    />
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
   )
 }
 
-function Dot({ className = '' }) {
+function Check() {
   return (
-    <span
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
-      className={'inline-block w-2 h-2 rounded-full ' + className}
-    />
+    >
+      <path d="M5 12l4.5 4.5L20 6" />
+    </svg>
+  )
+}
+
+function ArrowLeft() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M19 12H5" />
+      <path d="m11 19-7-7 7-7" />
+    </svg>
   )
 }

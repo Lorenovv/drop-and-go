@@ -10,18 +10,19 @@ export default function LanguageToggle() {
     <div
       role="group"
       aria-label="Language"
-      className="inline-flex rounded-lg border border-white/10 bg-white/5 p-0.5 text-xs"
+      className="glass inline-flex rounded-full p-0.5 text-xs"
     >
       {LANGS.map((lng) => (
         <button
           key={lng}
           type="button"
           onClick={() => i18n.changeLanguage(lng)}
+          aria-pressed={current === lng}
           className={
-            'px-2.5 py-1 rounded-md transition cursor-pointer ' +
+            'px-3 py-1.5 rounded-full font-medium tracking-wide transition cursor-pointer ' +
             (current === lng
-              ? 'bg-blue-500 text-white'
-              : 'text-white/70 hover:text-white')
+              ? 'bg-[color:var(--color-fg)] text-[color:var(--color-bg)]'
+              : 'text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]')
           }
         >
           {t(`lang.${lng}`)}
