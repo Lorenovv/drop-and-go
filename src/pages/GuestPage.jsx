@@ -82,11 +82,11 @@ export default function GuestPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center px-4 sm:px-6 py-6">
-      <div className="w-full max-w-3xl flex flex-col gap-5">
-        <div className="rounded-2xl glass border-emerald-400/30 px-4 py-2.5 text-sm text-emerald-200 flex items-center gap-2">
+      <div className="w-full max-w-3xl flex flex-col gap-5 min-w-0">
+        <div className="rounded-2xl glass border-emerald-400/30 px-4 py-2.5 text-sm text-emerald-200 flex items-center gap-2 min-w-0">
           <Dot className="bg-emerald-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.6)]" />
-          <span className="font-mono tracking-[0.3em]">{code}</span>
-          <span className="text-white/50 ml-auto text-xs">
+          <span className="font-mono tracking-[0.3em] truncate">{code}</span>
+          <span className="text-white/50 ml-auto text-xs shrink-0">
             {t('guest.connected')}
           </span>
         </div>

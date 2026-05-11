@@ -49,16 +49,16 @@ export default function HostPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center px-4 sm:px-6 py-6">
-      <div className="w-full max-w-3xl flex flex-col gap-5">
-        <section className="glass-strong rounded-3xl p-5 sm:p-7 flex flex-col sm:flex-row gap-6 items-center">
-          <div className="flex-1 flex flex-col items-center sm:items-start gap-3 order-2 sm:order-1 w-full">
+      <div className="w-full max-w-3xl flex flex-col gap-5 min-w-0">
+        <section className="glass-strong rounded-3xl p-5 sm:p-7 flex flex-col sm:flex-row gap-6 items-center min-w-0">
+          <div className="flex-1 flex flex-col items-center sm:items-start gap-3 order-2 sm:order-1 w-full min-w-0">
             <span className="text-[11px] uppercase tracking-[0.25em] text-white/40">
               {t('host.yourCode')}
             </span>
-            <div className="font-mono text-4xl sm:text-5xl md:text-6xl font-bold tracking-[0.18em] brand-gradient select-all break-all">
+            <div className="font-mono text-4xl sm:text-5xl md:text-6xl font-bold tracking-[0.18em] brand-gradient select-all break-all max-w-full">
               {code}
             </div>
-            <div className="flex flex-wrap gap-2 mt-1">
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1">
               <button type="button" onClick={copy} className="btn-ghost text-sm py-2">
                 {copied ? t('host.copied') : t('host.copy')}
               </button>
