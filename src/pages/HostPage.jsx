@@ -108,10 +108,19 @@ function StatusBanner({ status, error }) {
     )
   }
   if (status === 'error') {
-    const key = error === 'ROOM_BUSY' ? 'guest.notFound' : 'guest.notFound'
+    let messageKey = 'guest.notFound'
+    if (error === 'ROOM_BUSY') messageKey = 'hostError.roomBusy'
+    else if (error === 'SIGNALING_ERROR') messageKey = 'hostError.signaling'
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-        {t(key)}
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+        <span>{t(messageKey)}</span>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="self-start sm:self-auto rounded-md bg-red-500/20 hover:bg-red-500/30 px-2 py-1 text-xs font-medium text-red-100 transition cursor-pointer"
+        >
+          {t('hostError.newRoom')}
+        </button>
       </div>
     )
   }
