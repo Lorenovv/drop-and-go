@@ -32,6 +32,28 @@ const PEER_RECONNECT_GRACE_MS = 8000
 // nostr relays. Tied to the protocol version.
 const APP_ID = 'drop-and-go-v1'
 
+// Curated Nostr relays known to be globally reachable and stable. Trystero's
+// default list is ~70 mostly-niche relays of varying quality, and it picks
+// only 5 via a deterministic shuffle — when one side's network can't reach
+// a few of those 5 (cellular carriers often block obscure hosts), peers can
+// end up with zero overlap and never discover each other. We replace the
+// default selection with this list and subscribe to *all* of them, so peers
+// only need a single working relay in common to meet.
+const RELAY_URLS = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.nostr.band',
+  'wss://relay.primal.net',
+  'wss://nostr.mom',
+  'wss://offchain.pub',
+  'wss://relay.snort.social',
+  'wss://nostr-pub.wellorder.net',
+  'wss://nostr.bitcoiner.social',
+  'wss://relay.nostr.bg',
+  'wss://nostr.fmt.wiz.biz',
+  'wss://relay.current.fyi',
+]
+
 // Trystero ships with public STUN only. Mobile carriers usually put devices
 // behind symmetric NAT, so STUN alone is not enough — without TURN the ICE
 // negotiation fails silently and the connection just hangs. We hand it the
@@ -59,6 +81,21 @@ const TURN_SERVERS = [
     credential: 'openrelayproject',
   },
 ]
+
+// Snapshot how many of our Trystero relay sockets are actually open. Used to
+// distinguish "the network can't reach signalling at all" from "signalling is
+// fine but no peer is in the room".
+function summarizeRelays() {
+  let sockets = {}
+  try {
+    sockets = getRelaySockets() || {}
+  } catch {
+    sockets = {}
+  }
+  const urls = Object.keys(sockets)
+  const openCount = urls.filter((u) => sockets[u]?.readyState === 1).length
+  return { openCount, totalCount: urls.length, urls }
+}
 
 export function useRoom({ mode, code }) {
   const [status, setStatus] = useState('idle')
@@ -109,11 +146,18 @@ export function useRoom({ mode, code }) {
     setIncoming({})
     peerIdRef.current = null
 
+    const roomId = codeToRoomId(code)
+    console.info('[useRoom] joining', { mode, roomId, relays: RELAY_URLS.length })
+
     let room
     try {
       room = joinRoom(
-        { appId: APP_ID, turnConfig: TURN_SERVERS },
-        codeToRoomId(code),
+        {
+          appId: APP_ID,
+          turnConfig: TURN_SERVERS,
+          relayConfig: { urls: RELAY_URLS },
+        },
+        roomId,
       )
     } catch (err) {
       console.warn('joinRoom failed:', err)
@@ -128,6 +172,15 @@ export function useRoom({ mode, code }) {
     // peer has appeared yet.
     setStatus(mode === 'host' ? 'waiting' : 'connecting')
 
+    // Log relay state shortly after joinRoom returns so we can see, for both
+    // host and guest, whether the device actually managed to subscribe to any
+    // signalling relay. If nothing comes online, no QR / no code can ever
+    // help.
+    const relayProbeTimer = setTimeout(() => {
+      const summary = summarizeRelays()
+      console.info('[useRoom] relay state @ 5s', summary)
+    }, 5000)
+
     if (mode === 'guest') {
       initialTimerRef.current = setTimeout(() => {
         if (peerIdRef.current) return
@@ -135,25 +188,9 @@ export function useRoom({ mode, code }) {
         // so we can distinguish "signalling is dead on this network" (no
         // relays open) from "signalling is fine but no host in this room"
         // (some relays open, but nobody's listening on the room id).
-        const sockets = (() => {
-          try {
-            return getRelaySockets() || {}
-          } catch {
-            return {}
-          }
-        })()
-        const openCount = Object.values(sockets).filter(
-          (ws) => ws && ws.readyState === 1,
-        ).length
-        const totalCount = Object.keys(sockets).length
-        console.warn(
-          '[useRoom] guest timeout — relays:',
-          openCount,
-          '/',
-          totalCount,
-          'open',
-        )
-        setError(openCount === 0 ? 'SIGNALING_ERROR' : 'ROOM_NOT_FOUND')
+        const summary = summarizeRelays()
+        console.warn('[useRoom] guest timeout', summary)
+        setError(summary.openCount === 0 ? 'SIGNALING_ERROR' : 'ROOM_NOT_FOUND')
         setStatus('error')
       }, GUEST_INITIAL_TIMEOUT_MS)
     }
@@ -170,9 +207,28 @@ export function useRoom({ mode, code }) {
       sendFileRaw,
     }
 
+    // Mark the session as connected. Normally driven by Trystero's
+    // `onPeerJoin`, but the host side has occasionally seen the handshake
+    // event get missed while still receiving real action data over the
+    // already-open DataChannel — leaving the UI stuck in "waiting" while
+    // messages from the guest land in the chat. Any inbound action implies
+    // an active peer, so action callbacks call this too as a safety net.
+    const markPeerActive = (peerId) => {
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      const wasNew = !peerIdRef.current
+      peerIdRef.current = peerId
+      clearInitialTimer()
+      clearReconnectTimer()
+      setStatus('connected')
+      if (wasNew) {
+        console.info('[useRoom] peer active', peerId)
+      }
+    }
+
     getText((data, peerId) => {
       if (!data || typeof data !== 'object') return
       if (peerIdRef.current && peerId !== peerIdRef.current) return
+      markPeerActive(peerId)
       appendMessage({
         id: data.id || crypto.randomUUID(),
         type: 'text',
@@ -184,6 +240,7 @@ export function useRoom({ mode, code }) {
 
     getTyping((_data, peerId) => {
       if (peerIdRef.current && peerId !== peerIdRef.current) return
+      markPeerActive(peerId)
       setPeerTyping(true)
       if (peerTypingTimerRef.current) {
         clearTimeout(peerTypingTimerRef.current)
@@ -196,6 +253,7 @@ export function useRoom({ mode, code }) {
 
     getClear((_data, peerId) => {
       if (peerIdRef.current && peerId !== peerIdRef.current) return
+      markPeerActive(peerId)
       setMessages([
         {
           id: crypto.randomUUID(),
@@ -208,6 +266,7 @@ export function useRoom({ mode, code }) {
 
     getFileRaw((data, peerId, metadata) => {
       if (peerIdRef.current && peerId !== peerIdRef.current) return
+      markPeerActive(peerId)
       const meta = metadata || {}
       const blob = new Blob([data], {
         type: meta.mime || 'application/octet-stream',
@@ -248,15 +307,10 @@ export function useRoom({ mode, code }) {
     })
 
     room.onPeerJoin((peerId) => {
-      if (peerIdRef.current && peerId !== peerIdRef.current) {
-        // Third peer joining a 1:1 room — ignore for now. Trystero broadcasts
-        // will still reach them, but we won't surface them to the UI.
-        return
-      }
-      peerIdRef.current = peerId
-      clearInitialTimer()
-      clearReconnectTimer()
-      setStatus('connected')
+      // Third peer joining a 1:1 room — ignore for now. Trystero broadcasts
+      // will still reach them, but we won't surface them to the UI.
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      markPeerActive(peerId)
     })
 
     room.onPeerLeave((peerId) => {
@@ -283,6 +337,7 @@ export function useRoom({ mode, code }) {
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload)
       closedByUserRef.current = true
+      clearTimeout(relayProbeTimer)
       clearInitialTimer()
       clearReconnectTimer()
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
