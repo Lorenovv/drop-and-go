@@ -4,7 +4,7 @@
 // uniformly distributed and short enough to read aloud.
 
 const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ' // 31 chars, ambiguous removed
-const PREFIX = 'dg-' // PeerJS peer id namespacing
+const PREFIX = 'dg-' // Trystero room id namespacing
 
 function randomBytes(length) {
   const buf = new Uint8Array(length)
@@ -44,7 +44,8 @@ export function isValidCode(code) {
   return /^[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(normalizeCode(code))
 }
 
-// PeerJS peer id derived from the room code so guests can connect directly.
-export function codeToPeerId(code) {
+// Trystero room id derived from the human-friendly code so both sides land
+// in the same WebRTC room.
+export function codeToRoomId(code) {
   return PREFIX + normalizeCode(code).toLowerCase()
 }

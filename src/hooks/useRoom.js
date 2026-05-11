@@ -1,31 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Peer from 'peerjs'
-import { codeToPeerId } from '../utils/code.js'
-import { PEER_CONFIG } from '../utils/peerConfig.js'
-import {
-  createReceiver,
-  sendFile,
-  MAX_FILE_BYTES,
-} from '../utils/fileTransfer.js'
+import { joinRoom, selfId } from '@trystero-p2p/nostr'
+import { codeToRoomId } from '../utils/code.js'
+import { MAX_FILE_BYTES } from '../utils/fileTransfer.js'
 
-// Possible status values:
-// - 'idle'         : initial state, before Peer is constructed
-// - 'initializing' : Peer is registering with the signaling server
-// - 'waiting'      : (host only) signaling open, waiting for guest
-// - 'connecting'   : (guest only) attempting to open DataConnection
-// - 'connected'    : DataConnection is open both ways
-// - 'reconnecting' : (guest only) lost the connection, retrying
-// - 'closed'       : remote side ended the session
-// - 'error'        : fatal error (room not found, signaling failed, etc.)
+// useRoom — owns the WebRTC session for either side of a 1:1 chat.
+//
+// Returns a stable interface independent of the underlying P2P library so the
+// pages don't need to know about Trystero / PeerJS / etc.
+//
+// `status` values:
+// - 'idle'         : not yet initialized (e.g. invalid code)
+// - 'initializing' : joining the discovery network
+// - 'waiting'      : (host) joined the room, no peer yet
+// - 'connecting'   : (guest) joined the room, waiting for the host to appear
+// - 'connected'    : peer is in the room and the data channel is open
+// - 'reconnecting' : peer left briefly, waiting for them to come back
+// - 'closed'       : peer ended the session
+// - 'error'        : fatal error (room not found / signaling failed)
 
 const TYPING_DEBOUNCE_MS = 1500
-const GUEST_RECONNECT_DELAY_MS = 1500
-const GUEST_MAX_RECONNECT_ATTEMPTS = 5
-// Initial-connect retries: public 0.peerjs.com is eventually consistent, so a
-// guest that arrives a beat before the host's registration propagates gets a
-// transient `peer-unavailable`. Retry a few times with backoff before giving
-// up and showing the room-not-found error.
-const GUEST_INITIAL_RETRY_DELAYS_MS = [1500, 2500, 4000, 6000]
+// How long a guest waits for the host to appear in the room before deciding
+// the room is dead. The torrent-tracker strategy normally peers up in 1-3s, so
+// 18s is generous without making real outages feel slow.
+const GUEST_INITIAL_TIMEOUT_MS = 18000
+// How long we wait for a peer to come back after they disconnect before
+// declaring the session closed. Brief network blips (Wi-Fi handoff, screen
+// lock) usually recover well inside this window.
+const PEER_RECONNECT_GRACE_MS = 8000
+
+// Unique app identifier so we don't collide with anyone else using Trystero
+// torrent trackers. Tied to the protocol version.
+const APP_ID = 'drop-and-go-v1'
 
 export function useRoom({ mode, code }) {
   const [status, setStatus] = useState('idle')
@@ -37,316 +42,220 @@ export function useRoom({ mode, code }) {
   // Map of transferId -> { id, name, size, received, total } for incoming
   const [incoming, setIncoming] = useState({})
 
-  const peerRef = useRef(null)
-  const connectionRef = useRef(null)
-  const receiverRef = useRef(createReceiver())
+  const roomRef = useRef(null)
+  const actionsRef = useRef(null)
+  const peerIdRef = useRef(null)
   const typingTimerRef = useRef(null)
   const peerTypingTimerRef = useRef(null)
-  const reconnectAttemptsRef = useRef(0)
+  const initialTimerRef = useRef(null)
+  const reconnectTimerRef = useRef(null)
   const closedByUserRef = useRef(false)
-  const hasConnectedRef = useRef(false)
-  const initialRetryIndexRef = useRef(0)
-  const initialRetryTimerRef = useRef(null)
-  // Forward ref so `setConnection` can call `tryReconnect` even though it's
-  // declared later in the hook body.
-  const tryReconnectRef = useRef(() => {})
 
   const appendMessage = useCallback((msg) => {
     setMessages((prev) => [...prev, msg])
   }, [])
 
-  const setConnection = useCallback(
-    (conn) => {
-      connectionRef.current = conn
-      if (!conn) return
-
-      conn.on('open', () => {
-        reconnectAttemptsRef.current = 0
-        initialRetryIndexRef.current = 0
-        hasConnectedRef.current = true
-        setStatus('connected')
-      })
-
-      conn.on('data', (data) => {
-        if (!data || typeof data !== 'object') return
-        switch (data.type) {
-          case 'text':
-            appendMessage({
-              id: data.id || crypto.randomUUID(),
-              type: 'text',
-              from: 'peer',
-              content: String(data.content ?? ''),
-              ts: Date.now(),
-            })
-            break
-          case 'typing':
-            setPeerTyping(true)
-            if (peerTypingTimerRef.current) {
-              clearTimeout(peerTypingTimerRef.current)
-            }
-            peerTypingTimerRef.current = setTimeout(
-              () => setPeerTyping(false),
-              TYPING_DEBOUNCE_MS + 500,
-            )
-            break
-          case 'clear':
-            setMessages([
-              {
-                id: crypto.randomUUID(),
-                type: 'system',
-                key: 'chat.cleared',
-                ts: Date.now(),
-              },
-            ])
-            break
-          case 'file-meta': {
-            const t = receiverRef.current.handleMeta(data)
-            if (t) {
-              setIncoming((prev) => ({
-                ...prev,
-                [t.id]: {
-                  id: t.id,
-                  name: t.name,
-                  size: t.size,
-                  received: 0,
-                  total: t.size,
-                },
-              }))
-            }
-            break
-          }
-          case 'file-chunk': {
-            const t = receiverRef.current.handleChunk(data)
-            if (t) {
-              setIncoming((prev) => ({
-                ...prev,
-                [t.id]: {
-                  id: t.id,
-                  name: t.name,
-                  size: t.size,
-                  received: t.received,
-                  total: t.size,
-                },
-              }))
-            }
-            break
-          }
-          case 'file-end': {
-            const t = receiverRef.current.handleEnd(data)
-            if (t) {
-              setIncoming((prev) => {
-                const next = { ...prev }
-                delete next[data.id]
-                return next
-              })
-              appendMessage({
-                id: t.id,
-                type: 'file',
-                from: 'peer',
-                name: t.name,
-                size: t.size,
-                mime: t.mime,
-                url: t.url,
-                ts: Date.now(),
-              })
-            }
-            break
-          }
-          default:
-            break
-        }
-      })
-
-      conn.on('close', () => {
-        connectionRef.current = null
-        if (closedByUserRef.current) return
-        if (mode === 'guest') {
-          tryReconnectRef.current()
-        } else {
-          setStatus('waiting')
-        }
-      })
-
-      conn.on('error', (err) => {
-        console.warn('DataConnection error:', err)
-      })
-    },
-    [appendMessage, mode],
-  )
-
-  const tryReconnect = useCallback(() => {
-    if (closedByUserRef.current) return
-    if (reconnectAttemptsRef.current >= GUEST_MAX_RECONNECT_ATTEMPTS) {
-      setStatus('closed')
-      return
+  const clearInitialTimer = useCallback(() => {
+    if (initialTimerRef.current) {
+      clearTimeout(initialTimerRef.current)
+      initialTimerRef.current = null
     }
-    setStatus('reconnecting')
-    reconnectAttemptsRef.current += 1
-    setTimeout(() => {
-      const peer = peerRef.current
-      if (!peer || peer.destroyed) {
-        setStatus('closed')
-        return
-      }
-      const conn = peer.connect(codeToPeerId(code), { reliable: true })
-      setConnection(conn)
-    }, GUEST_RECONNECT_DELAY_MS)
-  }, [code, setConnection])
+  }, [])
 
-  // Keep the forward ref in sync so `setConnection`'s close handler can call
-  // the latest `tryReconnect`. Done in an effect so React's strict mode
-  // ("no ref writes during render") is satisfied.
-  useEffect(() => {
-    tryReconnectRef.current = tryReconnect
-  }, [tryReconnect])
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
-    if (!mode || (mode === 'guest' && !code)) return undefined
+    if (!mode || !code) return undefined
 
     closedByUserRef.current = false
     setStatus('initializing')
     setError(null)
+    setMessages([])
+    setPeerTyping(false)
+    setOutgoing({})
+    setIncoming({})
+    peerIdRef.current = null
 
-    const peerId = mode === 'host' ? codeToPeerId(code) : undefined
-    const peer = new Peer(peerId, PEER_CONFIG)
-    peerRef.current = peer
+    let room
+    try {
+      room = joinRoom({ appId: APP_ID }, codeToRoomId(code))
+    } catch (err) {
+      console.warn('joinRoom failed:', err)
+      setError('SIGNALING_ERROR')
+      setStatus('error')
+      return undefined
+    }
+    roomRef.current = room
 
-    peer.on('open', () => {
-      if (mode === 'host') {
-        setStatus('waiting')
-      } else {
-        const conn = peer.connect(codeToPeerId(code), { reliable: true })
-        setStatus('connecting')
-        setConnection(conn)
-      }
+    // Once we've actually subscribed to peer events, transition to the
+    // mode-specific waiting state. The room is "live" at this point, but no
+    // peer has appeared yet.
+    setStatus(mode === 'host' ? 'waiting' : 'connecting')
+
+    if (mode === 'guest') {
+      initialTimerRef.current = setTimeout(() => {
+        // No host has shown up. Either the code is wrong or the host left
+        // before we joined.
+        if (!peerIdRef.current) {
+          setError('ROOM_NOT_FOUND')
+          setStatus('error')
+        }
+      }, GUEST_INITIAL_TIMEOUT_MS)
+    }
+
+    const [sendText, getText] = room.makeAction('text')
+    const [sendTyping, getTyping] = room.makeAction('typing')
+    const [sendClear, getClear] = room.makeAction('clear')
+    const [sendFileRaw, getFileRaw, onFileProgress] = room.makeAction('file')
+
+    actionsRef.current = {
+      sendText,
+      sendTyping,
+      sendClear,
+      sendFileRaw,
+    }
+
+    getText((data, peerId) => {
+      if (!data || typeof data !== 'object') return
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      appendMessage({
+        id: data.id || crypto.randomUUID(),
+        type: 'text',
+        from: 'peer',
+        content: String(data.content ?? ''),
+        ts: Date.now(),
+      })
     })
 
-    peer.on('connection', (conn) => {
-      if (mode !== 'host') return
-      // Replace any prior connection
-      if (connectionRef.current && connectionRef.current.open) {
-        try {
-          connectionRef.current.close()
-        } catch {
-          // ignore
-        }
+    getTyping((_data, peerId) => {
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      setPeerTyping(true)
+      if (peerTypingTimerRef.current) {
+        clearTimeout(peerTypingTimerRef.current)
       }
-      setConnection(conn)
+      peerTypingTimerRef.current = setTimeout(
+        () => setPeerTyping(false),
+        TYPING_DEBOUNCE_MS + 500,
+      )
     })
 
-    peer.on('error', (err) => {
-      console.warn('Peer error:', err)
-      const type = err && err.type
-      if (type === 'unavailable-id' && mode === 'host') {
-        setError('ROOM_BUSY')
-        setStatus('error')
-        return
-      }
-      if (type === 'invalid-id' && mode === 'guest') {
-        setError('ROOM_NOT_FOUND')
-        setStatus('error')
-        return
-      }
-      if (type === 'peer-unavailable' && mode === 'guest') {
-        // The public PeerJS signaling server can briefly return
-        // `peer-unavailable` even when the host is up — the registration is
-        // eventually consistent, and mobile clients on a different network
-        // often see this on the first attempt. Retry with backoff before
-        // declaring the room missing.
-        if (hasConnectedRef.current) {
-          tryReconnectRef.current()
-          return
-        }
-        const idx = initialRetryIndexRef.current
-        if (idx < GUEST_INITIAL_RETRY_DELAYS_MS.length) {
-          const delay = GUEST_INITIAL_RETRY_DELAYS_MS[idx]
-          initialRetryIndexRef.current = idx + 1
-          setStatus('connecting')
-          if (initialRetryTimerRef.current) {
-            clearTimeout(initialRetryTimerRef.current)
-          }
-          initialRetryTimerRef.current = setTimeout(() => {
-            if (closedByUserRef.current) return
-            const p = peerRef.current
-            if (!p || p.destroyed) return
-            const conn = p.connect(codeToPeerId(code), { reliable: true })
-            setConnection(conn)
-          }, delay)
-          return
-        }
-        setError('ROOM_NOT_FOUND')
-        setStatus('error')
-        return
-      }
-      if (type === 'network' || type === 'disconnected') {
-        if (mode === 'guest') {
-          tryReconnectRef.current()
-          return
-        }
-      }
-      if (type === 'server-error' || type === 'socket-error') {
-        setError('SIGNALING_ERROR')
-        setStatus('error')
-      }
+    getClear((_data, peerId) => {
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          type: 'system',
+          key: 'chat.cleared',
+          ts: Date.now(),
+        },
+      ])
     })
 
-    peer.on('disconnected', () => {
-      // Signaling lost — PeerJS will auto-reconnect to its signaling server.
-      // The DataConnection's `close` handler is what drives our UI status
-      // transitions, so we just nudge the signaling layer back up here.
-      try {
-        peer.reconnect()
-      } catch {
-        // ignore
+    getFileRaw((data, peerId, metadata) => {
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      const meta = metadata || {}
+      const blob = new Blob([data], {
+        type: meta.mime || 'application/octet-stream',
+      })
+      const url = URL.createObjectURL(blob)
+      setIncoming((prev) => {
+        const next = { ...prev }
+        delete next[meta.id]
+        return next
+      })
+      appendMessage({
+        id: meta.id || crypto.randomUUID(),
+        type: 'file',
+        from: 'peer',
+        name: meta.name || 'file',
+        size: meta.size || blob.size,
+        mime: meta.mime || blob.type,
+        url,
+        ts: Date.now(),
+      })
+    })
+
+    onFileProgress((percent, peerId, metadata) => {
+      if (peerIdRef.current && peerId !== peerIdRef.current) return
+      const meta = metadata || {}
+      if (!meta.id || !meta.name || !meta.size) return
+      const received = Math.round(meta.size * percent)
+      setIncoming((prev) => ({
+        ...prev,
+        [meta.id]: {
+          id: meta.id,
+          name: meta.name,
+          size: meta.size,
+          received,
+          total: meta.size,
+        },
+      }))
+    })
+
+    room.onPeerJoin((peerId) => {
+      if (peerIdRef.current && peerId !== peerIdRef.current) {
+        // Third peer joining a 1:1 room — ignore for now. Trystero broadcasts
+        // will still reach them, but we won't surface them to the UI.
+        return
       }
+      peerIdRef.current = peerId
+      clearInitialTimer()
+      clearReconnectTimer()
+      setStatus('connected')
+    })
+
+    room.onPeerLeave((peerId) => {
+      if (peerId !== peerIdRef.current) return
+      // Give the peer a short window to come back (Wi-Fi handoff etc).
+      setStatus('reconnecting')
+      clearReconnectTimer()
+      reconnectTimerRef.current = setTimeout(() => {
+        peerIdRef.current = null
+        setStatus('closed')
+      }, PEER_RECONNECT_GRACE_MS)
     })
 
     const onBeforeUnload = () => {
       closedByUserRef.current = true
       try {
-        if (connectionRef.current) connectionRef.current.close()
-        peer.destroy()
+        room.leave()
       } catch {
         // ignore
       }
     }
     window.addEventListener('beforeunload', onBeforeUnload)
-    const receiver = receiverRef.current
 
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload)
       closedByUserRef.current = true
-      try {
-        if (connectionRef.current) connectionRef.current.close()
-      } catch {
-        // ignore
-      }
-      try {
-        peer.destroy()
-      } catch {
-        // ignore
-      }
-      peerRef.current = null
-      connectionRef.current = null
+      clearInitialTimer()
+      clearReconnectTimer()
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
       if (peerTypingTimerRef.current) clearTimeout(peerTypingTimerRef.current)
-      if (initialRetryTimerRef.current) {
-        clearTimeout(initialRetryTimerRef.current)
-        initialRetryTimerRef.current = null
+      try {
+        room.leave()
+      } catch {
+        // ignore
       }
-      receiver.abortAll()
+      roomRef.current = null
+      actionsRef.current = null
+      peerIdRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, code])
+  }, [mode, code, appendMessage, clearInitialTimer, clearReconnectTimer])
 
   const sendText = useCallback(
     (text) => {
-      const conn = connectionRef.current
-      if (!conn || !conn.open) return false
+      const actions = actionsRef.current
+      if (!actions || !peerIdRef.current) return false
       const trimmed = String(text ?? '').trim()
       if (!trimmed) return false
       const id = crypto.randomUUID()
-      conn.send({ type: 'text', id, content: trimmed })
+      actions.sendText({ id, content: trimmed }, peerIdRef.current)
       appendMessage({
         id,
         type: 'text',
@@ -360,10 +269,10 @@ export function useRoom({ mode, code }) {
   )
 
   const sendTyping = useCallback(() => {
-    const conn = connectionRef.current
-    if (!conn || !conn.open) return
+    const actions = actionsRef.current
+    if (!actions || !peerIdRef.current) return
     if (typingTimerRef.current) return // debounce
-    conn.send({ type: 'typing' })
+    actions.sendTyping(1, peerIdRef.current)
     typingTimerRef.current = setTimeout(() => {
       typingTimerRef.current = null
     }, TYPING_DEBOUNCE_MS)
@@ -371,8 +280,8 @@ export function useRoom({ mode, code }) {
 
   const sendFiles = useCallback(
     async (files) => {
-      const conn = connectionRef.current
-      if (!conn || !conn.open) return
+      const actions = actionsRef.current
+      if (!actions || !peerIdRef.current) return
       for (const file of files) {
         if (file.size > MAX_FILE_BYTES) {
           appendMessage({
@@ -384,6 +293,12 @@ export function useRoom({ mode, code }) {
           continue
         }
         const transferId = crypto.randomUUID()
+        const metadata = {
+          id: transferId,
+          name: file.name,
+          size: file.size,
+          mime: file.type || 'application/octet-stream',
+        }
         setOutgoing((prev) => ({
           ...prev,
           [transferId]: {
@@ -394,30 +309,36 @@ export function useRoom({ mode, code }) {
             total: file.size,
           },
         }))
+        const localUrl = URL.createObjectURL(file)
+        appendMessage({
+          id: transferId,
+          type: 'file',
+          from: 'me',
+          name: file.name,
+          size: file.size,
+          mime: metadata.mime,
+          url: localUrl,
+          ts: Date.now(),
+        })
         try {
-          const localUrl = URL.createObjectURL(file)
-          appendMessage({
-            id: transferId,
-            type: 'file',
-            from: 'me',
-            name: file.name,
-            size: file.size,
-            mime: file.type || 'application/octet-stream',
-            url: localUrl,
-            ts: Date.now(),
-          })
-          await sendFile(conn, file, (sent, total) => {
-            setOutgoing((prev) => ({
-              ...prev,
-              [transferId]: {
-                id: transferId,
-                name: file.name,
-                size: file.size,
-                sent,
-                total,
-              },
-            }))
-          })
+          await actions.sendFileRaw(
+            file,
+            peerIdRef.current,
+            metadata,
+            (percent) => {
+              const sent = Math.round(file.size * percent)
+              setOutgoing((prev) => ({
+                ...prev,
+                [transferId]: {
+                  id: transferId,
+                  name: file.name,
+                  size: file.size,
+                  sent,
+                  total: file.size,
+                },
+              }))
+            },
+          )
         } catch (err) {
           console.warn('sendFile failed:', err)
         } finally {
@@ -433,9 +354,9 @@ export function useRoom({ mode, code }) {
   )
 
   const clearChat = useCallback(() => {
-    const conn = connectionRef.current
-    if (conn && conn.open) {
-      conn.send({ type: 'clear' })
+    const actions = actionsRef.current
+    if (actions && peerIdRef.current) {
+      actions.sendClear(1, peerIdRef.current)
     }
     setMessages([])
   }, [])
@@ -443,15 +364,11 @@ export function useRoom({ mode, code }) {
   const endSession = useCallback(() => {
     closedByUserRef.current = true
     try {
-      if (connectionRef.current) connectionRef.current.close()
+      if (roomRef.current) roomRef.current.leave()
     } catch {
       // ignore
     }
-    try {
-      if (peerRef.current) peerRef.current.destroy()
-    } catch {
-      // ignore
-    }
+    peerIdRef.current = null
     setStatus('closed')
   }, [])
 
@@ -462,6 +379,7 @@ export function useRoom({ mode, code }) {
     peerTyping,
     outgoing,
     incoming,
+    selfId,
     sendText,
     sendTyping,
     sendFiles,
