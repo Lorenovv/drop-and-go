@@ -2,8 +2,20 @@
 
 @theme {
   --font-sans:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+    'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Brand palette */
+  --color-ink: #0a0a0a;
+  --color-ink-2: #0e0f14;
+  --color-accent: #6aa1ff;
+  --color-accent-2: #b18cff;
+  --color-accent-3: #57e1c1;
+
+  /* Glass tokens */
+  --glass-bg: color-mix(in oklab, white 4%, transparent);
+  --glass-border: color-mix(in oklab, white 12%, transparent);
+  --glass-border-strong: color-mix(in oklab, white 20%, transparent);
 }
 
 html,
@@ -12,25 +24,241 @@ body,
   height: 100%;
 }
 
-body {
-  font-family: var(--font-sans);
-  background-color: #0a0a0a;
-  color: #ffffff;
-  -webkit-font-smoothing: antialiased;
+html {
+  /* Slightly larger touch targets and crisper hinting on iOS Safari */
+  -webkit-text-size-adjust: 100%;
 }
 
-/* Subtle scrollbar for chat */
+body {
+  font-family: var(--font-sans);
+  font-feature-settings:
+    'cv11', 'ss01', 'ss02', 'ss03';
+  color: #f5f6fa;
+  background-color: #07080c;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* ---------- Aurora gradient background ---------- */
+/* Layered radial blobs that breathe slowly. CSS-only, GPU-friendly,
+   respects prefers-reduced-motion. */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-color: #07080c;
+  background-image:
+    radial-gradient(
+      80vmax 80vmax at 8% -10%,
+      rgba(106, 161, 255, 0.35) 0%,
+      rgba(106, 161, 255, 0) 60%
+    ),
+    radial-gradient(
+      70vmax 70vmax at 100% 0%,
+      rgba(177, 140, 255, 0.28) 0%,
+      rgba(177, 140, 255, 0) 60%
+    ),
+    radial-gradient(
+      90vmax 90vmax at 50% 110%,
+      rgba(87, 225, 193, 0.18) 0%,
+      rgba(87, 225, 193, 0) 60%
+    ),
+    radial-gradient(
+      60vmax 60vmax at 0% 100%,
+      rgba(255, 138, 196, 0.18) 0%,
+      rgba(255, 138, 196, 0) 60%
+    );
+  background-repeat: no-repeat;
+  animation: aurora-drift 28s ease-in-out infinite alternate;
+  filter: saturate(115%);
+}
+
+.app-bg::after {
+  /* Subtle SVG noise overlay to counter AI-flat gradients. Encoded inline so
+     no extra HTTP request. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+.app-bg-grid {
+  /* Faint dotted grid hovering under the gradients adds depth without
+     calling attention to itself. */
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px
+    );
+  background-size: 28px 28px;
+  mask-image: radial-gradient(
+    ellipse at 50% 30%,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.6) 50%,
+    rgba(0, 0, 0, 0) 80%
+  );
+}
+
+@keyframes aurora-drift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 0%,
+      50% 100%,
+      0% 100%;
+  }
+  100% {
+    background-position:
+      6% -4%,
+      94% 6%,
+      54% 96%,
+      4% 94%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-bg {
+    animation: none;
+  }
+}
+
+/* ---------- Glass utility ---------- */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.glass-strong {
+  background: color-mix(in oklab, white 6%, transparent);
+  border: 1px solid var(--glass-border-strong);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+
+/* ---------- Brand wordmark gradient ---------- */
+.brand-gradient {
+  background-image: linear-gradient(
+    100deg,
+    #6aa1ff 0%,
+    #b18cff 45%,
+    #57e1c1 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% 100%;
+  animation: brand-shimmer 8s ease-in-out infinite alternate;
+}
+
+@keyframes brand-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-gradient {
+    animation: none;
+  }
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.875rem;
+  font-weight: 600;
+  color: #0a0a0a;
+  background-image: linear-gradient(135deg, #c2d8ff 0%, #ffffff 100%);
+  box-shadow:
+    0 8px 24px -8px rgba(106, 161, 255, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 200ms ease,
+    filter 200ms ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow:
+    0 14px 30px -10px rgba(106, 161, 255, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(20%);
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+  background: color-mix(in oklab, white 4%, transparent);
+  border: 1px solid var(--glass-border);
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.btn-ghost:hover {
+  background: color-mix(in oklab, white 9%, transparent);
+  border-color: var(--glass-border-strong);
+}
+
+/* ---------- Chat scrollbar ---------- */
 .chat-scroll::-webkit-scrollbar {
   width: 8px;
 }
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 .chat-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
+/* ---------- Typing indicator dots ---------- */
 @keyframes blink {
   0%,
   100% {
@@ -49,4 +277,33 @@ body {
 }
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+/* Soft entrance for new message bubbles */
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bubble-enter {
+  animation: bubble-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-enter {
+    animation: none;
+  }
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid color-mix(in oklab, #6aa1ff 70%, white);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
 }
